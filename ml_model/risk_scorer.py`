@@ -1,0 +1,47 @@
+import pickle
+import numpy as np
+import os
+
+# Load the trained model and encoder
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
+with open(os.path.join(BASE_DIR, "model.pkl"), "rb") as f:
+    model = pickle.load(f)
+
+with open(os.path.join(BASE_DIR, "encoder.pkl"), "rb") as f:
+    encoder = pickle.load(f)
+
+def calculate_risk_score(hour: int, country: str, 
+                          failed_attempts: int, is_new_device: int):
+    # Convert country to number
+    try:
+        country_code = encoder.transform([country])[0]
+    except:
+        country_code = 0  # Unknown country = suspicious
+
+    features = [[hour, country_code, failed_attempts, is_new_device]]
+    
+    # Get AI score
+    raw_score = model.decision_function(features)[0]
+    
+    # Convert to 0-100 risk score
+    # raw_score: positive = normal, negative = suspicious
+    risk = max(0, min(100, int((1 - raw_score) * 50)))
+    return risk
+
+def decide_action(risk_score: int):
+    if risk_score <= 30:
+        return "allow"
+    elif risk_score <= 60:
+        return "otp"
+    elif risk_score <= 80:
+        return "restrict"
+    else:
+        return "block"
+
+# Test it
+if __name__ == "__main__":
+    score1 = calculate_risk_score(10, "Sri Lanka", 0, 0)
+    score2 = calculate_risk_score(3, "Russia", 8, 1)
+    print(f"Normal login risk: {score1}/100 → {decide_action(score1)}")
+    print(f"Suspicious login risk: {score2}/100 → {decide_action(score2)}")
