@@ -3,6 +3,7 @@ import os
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'ml_model'))
 
 from fastapi import FastAPI, Depends, Request
+from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 from database import engine, get_db
 import models
@@ -11,6 +12,14 @@ from risk_scorer import calculate_risk_score, decide_action
 from datetime import datetime
 
 app = FastAPI(title="ISP Security System")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:3000"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 models.Base.metadata.create_all(bind=engine)
 
@@ -46,10 +55,8 @@ def login(username: str, password: str, request: Request,
         )
         return {"error": "Wrong password - login blocked"}
 
-    # Get current hour
     current_hour = datetime.now().hour
 
-    # Calculate AI risk score
     risk_score = calculate_risk_score(
         hour=current_hour,
         country="Sri Lanka",
@@ -57,10 +64,8 @@ def login(username: str, password: str, request: Request,
         is_new_device=0
     )
 
-    # Decide action
     action = decide_action(risk_score)
 
-    # Save login event
     auth.save_login_event(
         db, username,
         ip=request.client.host,
