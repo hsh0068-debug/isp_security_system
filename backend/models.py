@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Float, Boolean, DateTime
+from sqlalchemy import Column, Integer, String, Float, Boolean, DateTime, Text
 from sqlalchemy.sql import func
 from database import Base
 
@@ -23,3 +23,4 @@ class LoginEvent(Base):
     success = Column(Boolean, default=True)
     risk_score = Column(Float, default=0.0)
     action_taken = Column(String, default="allow")
+    explanation = Column(Text, default="")

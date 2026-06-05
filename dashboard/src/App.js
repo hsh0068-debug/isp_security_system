@@ -1,25 +1,28 @@
 import React, { useState, useEffect } from 'react';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line } from 'recharts';
 import axios from 'axios';
 
 function App() {
   const [events, setEvents] = useState([]);
+  const [stats, setStats] = useState({ total:0, safe:0, high_risk:0, blocked:0 });
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetchEvents();
-    // Refresh every 5 seconds
-    const interval = setInterval(fetchEvents, 5000);
+    fetchData();
+    const interval = setInterval(fetchData, 5000);
     return () => clearInterval(interval);
   }, []);
 
-  const fetchEvents = async () => {
+  const fetchData = async () => {
     try {
-      const res = await axios.get('http://127.0.0.1:8000/login-events');
-      setEvents(res.data);
+      const [eventsRes, statsRes] = await Promise.all([
+        axios.get('http://127.0.0.1:8000/login-events'),
+        axios.get('http://127.0.0.1:8000/stats')
+      ]);
+      setEvents(eventsRes.data);
+      setStats(statsRes.data);
       setLoading(false);
     } catch (err) {
-      console.error('Error fetching events');
       setLoading(false);
     }
   };
@@ -39,105 +42,105 @@ function App() {
     return '#EF4444';
   };
 
-  const chartData = events.map((e, i) => ({
+  const chartData = events.map((e) => ({
     name: e.username,
     risk: e.risk_score
   }));
 
-  const totalLogins = events.length;
-  const blockedLogins = events.filter(e => e.action_taken === 'block' || e.action_taken === 'blocked').length;
-  const safeLogins = events.filter(e => e.action_taken === 'allow').length;
-  const highRisk = events.filter(e => e.risk_score > 60).length;
-
   return (
     <div style={{ background:'#0D1B3E', minHeight:'100vh', color:'white', fontFamily:'Arial, sans-serif' }}>
-      
+
       {/* Header */}
-      <div style={{ background:'#1560BD', padding:'20px 30px', display:'flex', alignItems:'center', justifyContent:'space-between' }}>
+      <div style={{ background:'#1560BD', padding:'16px 30px', display:'flex', alignItems:'center', justifyContent:'space-between' }}>
         <div>
-          <h1 style={{ margin:0, fontSize:'22px', color:'#02C39A' }}>🛡️ ISP Security Monitor</h1>
-          <p style={{ margin:0, fontSize:'13px', color:'#aaa' }}>AI-Based Network Security System — Live Dashboard</p>
+          <h1 style={{ margin:0, fontSize:'20px', color:'#02C39A' }}>🛡️ ISP Security Monitor</h1>
+          <p style={{ margin:0, fontSize:'12px', color:'#aaa' }}>AI-Based Network Security — Zero Trust Dashboard</p>
         </div>
-        <div style={{ fontSize:'13px', color:'#aaa' }}>
-          Auto-refresh: every 5 seconds
-        </div>
+        <div style={{ fontSize:'12px', color:'#aaa' }}>🔄 Auto-refresh every 5 seconds</div>
       </div>
 
-      <div style={{ padding:'24px' }}>
+      <div style={{ padding:'20px' }}>
 
-        {/* Stats Cards */}
-        <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:'16px', marginBottom:'24px' }}>
+        {/* Stats */}
+        <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:'12px', marginBottom:'20px' }}>
           {[
-            { label:'Total Logins', value:totalLogins, color:'#1560BD' },
-            { label:'Safe Logins', value:safeLogins, color:'#02C39A' },
-            { label:'High Risk', value:highRisk, color:'#F97316' },
-            { label:'Blocked', value:blockedLogins, color:'#EF4444' },
+            { label:'Total Logins', value:stats.total, color:'#1560BD', icon:'👤' },
+            { label:'Safe Logins', value:stats.safe, color:'#02C39A', icon:'✅' },
+            { label:'High Risk', value:stats.high_risk, color:'#F97316', icon:'⚠️' },
+            { label:'Blocked', value:stats.blocked, color:'#EF4444', icon:'🚫' },
           ].map((card, i) => (
-            <div key={i} style={{ background:'#1F3864', borderRadius:'12px', padding:'20px', borderTop:`4px solid ${card.color}` }}>
-              <div style={{ fontSize:'13px', color:'#8FA3BF', marginBottom:'8px' }}>{card.label}</div>
-              <div style={{ fontSize:'32px', fontWeight:'bold', color:card.color }}>{card.value}</div>
+            <div key={i} style={{ background:'#1F3864', borderRadius:'10px', padding:'16px', borderTop:`3px solid ${card.color}` }}>
+              <div style={{ fontSize:'20px', marginBottom:'4px' }}>{card.icon}</div>
+              <div style={{ fontSize:'11px', color:'#8FA3BF', marginBottom:'4px' }}>{card.label}</div>
+              <div style={{ fontSize:'28px', fontWeight:'bold', color:card.color }}>{card.value}</div>
             </div>
           ))}
         </div>
 
         {/* Chart */}
-        <div style={{ background:'#1F3864', borderRadius:'12px', padding:'20px', marginBottom:'24px' }}>
-          <h3 style={{ margin:'0 0 16px', color:'#02C39A' }}>Risk Score per Login</h3>
+        <div style={{ background:'#1F3864', borderRadius:'10px', padding:'16px', marginBottom:'20px' }}>
+          <h3 style={{ margin:'0 0 12px', color:'#02C39A', fontSize:'14px' }}>📊 Risk Score per Login</h3>
           {events.length > 0 ? (
-            <ResponsiveContainer width="100%" height={200}>
+            <ResponsiveContainer width="100%" height={180}>
               <BarChart data={chartData}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#2E5596" />
-                <XAxis dataKey="name" stroke="#8FA3BF" />
-                <YAxis domain={[0,100]} stroke="#8FA3BF" />
-                <Tooltip />
+                <XAxis dataKey="name" stroke="#8FA3BF" fontSize={11} />
+                <YAxis domain={[0,100]} stroke="#8FA3BF" fontSize={11} />
+                <Tooltip contentStyle={{ background:'#1F3864', border:'none', color:'white' }} />
                 <Bar dataKey="risk" fill="#1560BD" radius={[4,4,0,0]} />
               </BarChart>
             </ResponsiveContainer>
           ) : (
-            <p style={{ color:'#8FA3BF' }}>No login data yet</p>
+            <p style={{ color:'#8FA3BF', fontSize:'13px' }}>No login data yet</p>
           )}
         </div>
 
-        {/* Login Events Table */}
-        <div style={{ background:'#1F3864', borderRadius:'12px', padding:'20px' }}>
-          <h3 style={{ margin:'0 0 16px', color:'#02C39A' }}>Live Login Events</h3>
+        {/* Events Table */}
+        <div style={{ background:'#1F3864', borderRadius:'10px', padding:'16px' }}>
+          <h3 style={{ margin:'0 0 12px', color:'#02C39A', fontSize:'14px' }}>🔴 Live Login Events</h3>
           {loading ? (
             <p style={{ color:'#8FA3BF' }}>Loading...</p>
           ) : events.length === 0 ? (
-            <p style={{ color:'#8FA3BF' }}>No login events yet</p>
+            <p style={{ color:'#8FA3BF', fontSize:'13px' }}>No login events yet</p>
           ) : (
-            <table style={{ width:'100%', borderCollapse:'collapse', fontSize:'13px' }}>
-              <thead>
-                <tr style={{ color:'#8FA3BF', borderBottom:'1px solid #2E5596' }}>
-                  <th style={{ padding:'10px', textAlign:'left' }}>Username</th>
-                  <th style={{ padding:'10px', textAlign:'left' }}>Time</th>
-                  <th style={{ padding:'10px', textAlign:'left' }}>Location</th>
-                  <th style={{ padding:'10px', textAlign:'left' }}>IP Address</th>
-                  <th style={{ padding:'10px', textAlign:'left' }}>Risk Score</th>
-                  <th style={{ padding:'10px', textAlign:'left' }}>Action</th>
-                </tr>
-              </thead>
-              <tbody>
-                {events.map((event, i) => (
-                  <tr key={i} style={{ borderBottom:'1px solid #1F3864' }}>
-                    <td style={{ padding:'10px', color:'white' }}>{event.username}</td>
-                    <td style={{ padding:'10px', color:'#8FA3BF' }}>{new Date(event.login_time).toLocaleString()}</td>
-                    <td style={{ padding:'10px', color:'#8FA3BF' }}>{event.location}</td>
-                    <td style={{ padding:'10px', color:'#8FA3BF' }}>{event.ip_address}</td>
-                    <td style={{ padding:'10px' }}>
-                      <span style={{ color:getRiskColor(event.risk_score), fontWeight:'bold' }}>
-                        {event.risk_score}/100
-                      </span>
-                    </td>
-                    <td style={{ padding:'10px' }}>
-                      <span style={{ background:getActionColor(event.action_taken), color:'white', padding:'3px 10px', borderRadius:'20px', fontSize:'12px', fontWeight:'bold' }}>
-                        {event.action_taken.toUpperCase()}
-                      </span>
-                    </td>
+            <div style={{ overflowX:'auto' }}>
+              <table style={{ width:'100%', borderCollapse:'collapse', fontSize:'12px' }}>
+                <thead>
+                  <tr style={{ color:'#8FA3BF', borderBottom:'1px solid #2E5596' }}>
+                    <th style={{ padding:'8px', textAlign:'left' }}>User</th>
+                    <th style={{ padding:'8px', textAlign:'left' }}>Time</th>
+                    <th style={{ padding:'8px', textAlign:'left' }}>Location</th>
+                    <th style={{ padding:'8px', textAlign:'left' }}>IP</th>
+                    <th style={{ padding:'8px', textAlign:'left' }}>Risk</th>
+                    <th style={{ padding:'8px', textAlign:'left' }}>Action</th>
+                    <th style={{ padding:'8px', textAlign:'left' }}>AI Explanation</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {events.slice().reverse().map((event, i) => (
+                    <tr key={i} style={{ borderBottom:'1px solid #162844' }}>
+                      <td style={{ padding:'8px', color:'white', fontWeight:'500' }}>{event.username}</td>
+                      <td style={{ padding:'8px', color:'#8FA3BF' }}>{new Date(event.login_time).toLocaleString()}</td>
+                      <td style={{ padding:'8px', color:'#8FA3BF' }}>{event.location}</td>
+                      <td style={{ padding:'8px', color:'#8FA3BF' }}>{event.ip_address}</td>
+                      <td style={{ padding:'8px' }}>
+                        <span style={{ color:getRiskColor(event.risk_score), fontWeight:'bold' }}>
+                          {event.risk_score}/100
+                        </span>
+                      </td>
+                      <td style={{ padding:'8px' }}>
+                        <span style={{ background:getActionColor(event.action_taken), color:'white', padding:'2px 8px', borderRadius:'20px', fontSize:'11px', fontWeight:'bold' }}>
+                          {event.action_taken.toUpperCase()}
+                        </span>
+                      </td>
+                      <td style={{ padding:'8px', color:'#8FA3BF', fontSize:'11px', maxWidth:'300px' }}>
+                        {event.explanation || '-'}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           )}
         </div>
 

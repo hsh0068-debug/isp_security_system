@@ -9,6 +9,7 @@ from database import engine, get_db
 import models
 import auth
 from risk_scorer import calculate_risk_score, decide_action
+from geolocation import get_location_from_ip
 from datetime import datetime
 
 app = FastAPI(title="ISP Security System")
@@ -39,28 +40,57 @@ def register(username: str, password: str, email: str,
 @app.post("/login")
 def login(username: str, password: str, request: Request,
           db: Session = Depends(get_db)):
+
+    ip = request.client.host
+    location_data = get_location_from_ip(ip)
+    country = location_data["country"]
+    city = location_data["city"]
+    location = f"{city}, {country}"
+
     user = auth.get_user(db, username)
     if not user:
         return {"error": "User not found"}
 
     if not auth.verify_password(password, user.password_hash):
+        failed = db.query(models.LoginEvent).filter(
+            models.LoginEvent.username == username,
+            models.LoginEvent.success == False
+        ).count()
+
+        risk_score, explanation = calculate_risk_score(
+            hour=datetime.now().hour,
+            country=country,
+            failed_attempts=failed + 1,
+            is_new_device=1
+        )
+
         auth.save_login_event(
             db, username,
-            ip=request.client.host,
-            location="Unknown",
+            ip=ip,
+            location=location,
             device="Browser",
             success=False,
-            risk_score=80.0,
-            action="blocked"
+            risk_score=float(risk_score),
+            action="blocked",
+            explanation=explanation
         )
-        return {"error": "Wrong password - login blocked"}
+        return {
+            "error": "Wrong password - login blocked",
+            "risk_score": risk_score,
+            "explanation": explanation
+        }
+
+    failed_attempts = db.query(models.LoginEvent).filter(
+        models.LoginEvent.username == username,
+        models.LoginEvent.success == False
+    ).count()
 
     current_hour = datetime.now().hour
 
-    risk_score = calculate_risk_score(
+    risk_score, explanation = calculate_risk_score(
         hour=current_hour,
-        country="Sri Lanka",
-        failed_attempts=0,
+        country=country,
+        failed_attempts=failed_attempts,
         is_new_device=0
     )
 
@@ -68,24 +98,43 @@ def login(username: str, password: str, request: Request,
 
     auth.save_login_event(
         db, username,
-        ip=request.client.host,
-        location="Colombo",
+        ip=ip,
+        location=location,
         device="Browser",
         success=True,
         risk_score=float(risk_score),
-        action=action
+        action=action,
+        explanation=explanation
     )
 
-    if action == "allow":
-        return {"message": f"Welcome {username}!", "risk_score": risk_score, "action": action}
-    elif action == "otp":
-        return {"message": "OTP verification required", "risk_score": risk_score, "action": action}
-    elif action == "restrict":
-        return {"message": "Account restricted - suspicious activity", "risk_score": risk_score, "action": action}
-    else:
-        return {"message": "Access blocked - high risk detected", "risk_score": risk_score, "action": action}
+    return {
+        "message": f"Welcome {username}!",
+        "risk_score": risk_score,
+        "action": action,
+        "location": location,
+        "explanation": explanation
+    }
 
 @app.get("/login-events")
 def get_login_events(db: Session = Depends(get_db)):
     events = db.query(models.LoginEvent).all()
     return events
+
+@app.get("/stats")
+def get_stats(db: Session = Depends(get_db)):
+    total = db.query(models.LoginEvent).count()
+    blocked = db.query(models.LoginEvent).filter(
+        models.LoginEvent.action_taken == "blocked"
+    ).count()
+    safe = db.query(models.LoginEvent).filter(
+        models.LoginEvent.action_taken == "allow"
+    ).count()
+    high_risk = db.query(models.LoginEvent).filter(
+        models.LoginEvent.risk_score > 60
+    ).count()
+    return {
+        "total": total,
+        "blocked": blocked,
+        "safe": safe,
+        "high_risk": high_risk
+    }

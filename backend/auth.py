@@ -22,7 +22,8 @@ def get_user(db: Session, username: str):
 
 def save_login_event(db: Session, username: str, ip: str,
                      location: str, device: str, success: bool,
-                     risk_score: float, action: str):
+                     risk_score: float, action: str, 
+                     explanation: str = ""):
     event = LoginEvent(
         username=username,
         ip_address=ip,
@@ -31,7 +32,8 @@ def save_login_event(db: Session, username: str, ip: str,
         login_time=datetime.now(),
         success=success,
         risk_score=risk_score,
-        action_taken=action
+        action_taken=action,
+        explanation=explanation
     )
     db.add(event)
     db.commit()
