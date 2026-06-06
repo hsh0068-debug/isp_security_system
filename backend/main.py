@@ -132,9 +132,13 @@ def get_stats(db: Session = Depends(get_db)):
     high_risk = db.query(models.LoginEvent).filter(
         models.LoginEvent.risk_score > 60
     ).count()
+    otp = db.query(models.LoginEvent).filter(
+        models.LoginEvent.action_taken == "otp"
+    ).count()
     return {
         "total": total,
         "blocked": blocked,
         "safe": safe,
-        "high_risk": high_risk
+        "high_risk": high_risk,
+        "otp": otp
     }

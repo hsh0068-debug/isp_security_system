@@ -64,17 +64,17 @@ function App() {
         {/* Stats */}
         <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:'12px', marginBottom:'20px' }}>
           {[
-            { label:'Total Logins', value:stats.total, color:'#1560BD', icon:'👤' },
-            { label:'Safe Logins', value:stats.safe, color:'#02C39A', icon:'✅' },
-            { label:'High Risk', value:stats.high_risk, color:'#F97316', icon:'⚠️' },
-            { label:'Blocked', value:stats.blocked, color:'#EF4444', icon:'🚫' },
-          ].map((card, i) => (
-            <div key={i} style={{ background:'#1F3864', borderRadius:'10px', padding:'16px', borderTop:`3px solid ${card.color}` }}>
-              <div style={{ fontSize:'20px', marginBottom:'4px' }}>{card.icon}</div>
-              <div style={{ fontSize:'11px', color:'#8FA3BF', marginBottom:'4px' }}>{card.label}</div>
-              <div style={{ fontSize:'28px', fontWeight:'bold', color:card.color }}>{card.value}</div>
-            </div>
-          ))}
+  { label:'Total Logins', value:stats.total, color:'#1560BD', icon:'👤' },
+  { label:'Safe Logins', value:stats.safe, color:'#02C39A', icon:'✅' },
+  { label:'OTP Required', value:stats.otp || 0, color:'#F59E0B', icon:'🔐' },
+  { label:'Blocked', value:stats.blocked, color:'#EF4444', icon:'🚫' },
+].map((card, i) => (
+  <div key={i} style={{ background:'#1F3864', borderRadius:'10px', padding:'16px', borderTop:`3px solid ${card.color}` }}>
+    <div style={{ fontSize:'20px', marginBottom:'4px' }}>{card.icon}</div>
+    <div style={{ fontSize:'11px', color:'#8FA3BF', marginBottom:'4px' }}>{card.label}</div>
+    <div style={{ fontSize:'28px', fontWeight:'bold', color:card.color }}>{card.value}</div>
+  </div>
+))}
         </div>
 
         {/* Chart */}
