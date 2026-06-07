@@ -1,0 +1,17 @@
+fastapi
+uvicorn
+sqlalchemy
+psycopg2-binary
+python-dotenv
+passlib
+bcrypt
+python-jose
+requests
+geoip2
+httpx
+shap
+scikit-learn
+pandas
+numpy
+emails
+python-multipart
