@@ -55,8 +55,8 @@ def verify_otp(db: Session, username: str, otp_code: str):
 
 def send_otp_email(email: str, username: str, otp_code: str):
     try:
-        SENDER_EMAIL = "your-email@gmail.com"
-        SENDER_PASSWORD = "your-app-password"
+        SENDER_EMAIL = "madhavihennayaka@gmail.com"
+        SENDER_PASSWORD = "tsyh zbuw plnn sswh"
 
         msg = MIMEMultipart('alternative')
         msg['Subject'] = "ISP Security System - Your OTP Code"
