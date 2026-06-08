@@ -5,7 +5,7 @@ import random
 
 fake = Faker()
 
-def generate_login_data(n=5000):
+def generate_login_data(n=10000):
     data = []
     
     for i in range(n):
@@ -37,4 +37,4 @@ def generate_login_data(n=5000):
     print(df.head(10))
     return df
 
-generate_login_data(5000)
+generate_login_data(10000)
