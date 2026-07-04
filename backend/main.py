@@ -11,6 +11,7 @@ import auth
 from risk_scorer import calculate_risk_score, decide_action
 from geolocation import get_location_from_ip
 from otp_service import create_otp, verify_otp, send_otp_email
+from kafka_producer import publish_login_event
 from datetime import datetime
 
 app = FastAPI(title="ISP Security System")
@@ -30,7 +31,8 @@ models.Base.metadata.create_all(bind=engine)
 def home():
     return {
         "message": "ISP Security System is running!",
-        "principle": "Zero Trust Architecture — Never trust, always verify"
+        "principle": "Zero Trust Architecture — Never trust, always verify",
+        "kafka": "Real-time event streaming enabled"
     }
 
 @app.post("/register")
@@ -71,6 +73,17 @@ def login(username: str, password: str, request: Request,
             is_new_device=1
         )
 
+        # ─── Publish to Kafka ─────────────────────────────────
+        publish_login_event({
+            "username": username,
+            "ip": ip,
+            "location": location,
+            "risk_score": float(risk_score),
+            "action": "blocked",
+            "success": False,
+            "timestamp": str(datetime.now())
+        })
+
         auth.save_login_event(
             db, username,
             ip=ip, location=location,
@@ -101,12 +114,21 @@ def login(username: str, password: str, request: Request,
     # ─── ZERO TRUST Step 4: Decide action ────────────────────────
     action = decide_action(risk_score)
 
+    # ─── Publish to Kafka ─────────────────────────────────────────
+    publish_login_event({
+        "username": username,
+        "ip": ip,
+        "location": location,
+        "risk_score": float(risk_score),
+        "action": action,
+        "success": True,
+        "timestamp": str(datetime.now())
+    })
+
     # ─── ZERO TRUST Step 5: Execute response ─────────────────────
     if action == "otp":
-        # Generate and send OTP
         otp_code = create_otp(db, username, user.email)
         success, msg = send_otp_email(user.email, username, otp_code)
-
         auth.save_login_event(
             db, username,
             ip=ip, location=location,
@@ -116,11 +138,10 @@ def login(username: str, password: str, request: Request,
             explanation=explanation
         )
         return {
-            "message": "Suspicious activity detected — OTP sent to your email",
+            "message": "OTP sent to your email",
             "action": "otp",
             "risk_score": risk_score,
-            "explanation": explanation,
-            "otp_sent": msg
+            "explanation": explanation
         }
 
     auth.save_login_event(
@@ -142,14 +163,14 @@ def login(username: str, password: str, request: Request,
         }
     elif action == "restrict":
         return {
-            "message": "Account restricted — suspicious activity detected",
+            "message": "Account restricted",
             "risk_score": risk_score,
             "action": action,
             "explanation": explanation
         }
     else:
         return {
-            "message": "Access blocked — critical risk detected",
+            "message": "Access blocked",
             "risk_score": risk_score,
             "action": action,
             "explanation": explanation
@@ -161,7 +182,7 @@ def verify_otp_endpoint(username: str, otp_code: str,
     success, message = verify_otp(db, username, otp_code)
     if success:
         return {
-            "message": f"Welcome {username}! OTP verified successfully",
+            "message": f"Welcome {username}! OTP verified",
             "action": "allow",
             "verified": True
         }
